@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'game_state.dart';
 
 void main() {
-  runApp(const HookyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => GameState(),
+      child: const HookyApp(),
+    ),
+  );
 }
 
 class HookyApp extends StatelessWidget {
@@ -178,6 +185,8 @@ class ShopScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final game = context.watch<GameState>();
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -192,10 +201,10 @@ class ShopScreen extends StatelessWidget {
                 color: const Color(0xFFD782BA),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'My Shop',
                     style: TextStyle(
                       fontSize: 24,
@@ -203,19 +212,86 @@ class ShopScreen extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    '0 coins',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                    '${game.coins.toInt()} coins',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   Text(
-                    '0 coins/sec',
-                    style: TextStyle(color: Colors.white70),
+                    '${game.coinsPerSecond.toInt()} coins/sec',
+                    style: const TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
+
+            // Crafting status
+            if (game.craftingSlot != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Crafting: ${game.craftingSlot!.item.name}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD782BA),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: game.craftingSlot!.progress,
+                      backgroundColor: const Color(0xFFEFC7E5),
+                      valueColor: const AlwaysStoppedAnimation(Color(0xFFD782BA)),
+                      borderRadius: BorderRadius.circular(8),
+                      minHeight: 8,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Inventory
+            if (game.inventory.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Inventory (${game.inventory.length})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFD782BA),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: game.sellAll,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6E9887),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text('Sell all'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+
             const Text(
               'Craft items',
               style: TextStyle(
@@ -225,17 +301,14 @@ class ShopScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            // Items
+
+            // Items grid
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                children: const [
-                  _ItemCard(name: 'Beanie', time: 10, price: 30),
-                  _ItemCard(name: 'Scarf', time: 20, price: 50),
-                  _ItemCard(name: 'Socks', time: 15, price: 40),
-                ],
+                children: items.map((item) => _ItemCard(item: item)).toList(),
               ),
             ),
           ],
@@ -246,14 +319,15 @@ class ShopScreen extends StatelessWidget {
 }
 
 class _ItemCard extends StatelessWidget {
-  final String name;
-  final int time;
-  final int price;
+  final Item item;
 
-  const _ItemCard({required this.name, required this.time, required this.price});
+  const _ItemCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
+    final game = context.watch<GameState>();
+    final isCrafting = game.craftingSlot != null;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -273,7 +347,7 @@ class _ItemCard extends StatelessWidget {
           const Icon(Icons.favorite, color: Color(0xFFD782BA), size: 32),
           const Spacer(),
           Text(
-            name,
+            item.name,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -282,23 +356,27 @@ class _ItemCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '$time sec • $price coins',
+            '${item.baseTime}s • ${item.basePrice} coins',
             style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: isCrafting ? null : () => game.startCrafting(item),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD782BA),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey[300],
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 8),
               ),
-              child: const Text('Craft', style: TextStyle(fontSize: 13)),
+              child: Text(
+                isCrafting ? 'Busy' : 'Craft',
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
           ),
         ],
