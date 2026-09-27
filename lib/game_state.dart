@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// ignore: unused_import
 
 class Item {
   final String name;
@@ -14,6 +16,62 @@ const List<Item> items = [
   Item(name: 'Beanie', baseTime: 10, basePrice: 30),
   Item(name: 'Scarf', baseTime: 20, basePrice: 50),
   Item(name: 'Socks', baseTime: 15, basePrice: 40),
+];
+
+class Worker {
+  final String id;
+  final String name;
+  final String description;
+  final double coinsPerSecond;
+  final int baseCost;
+
+  const Worker({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.coinsPerSecond,
+    required this.baseCost,
+  });
+
+  int costForCount(int count) => (baseCost * pow(1.15, count)).toInt();
+}
+
+const List<Worker> workers = [
+  Worker(
+    id: 'beanie_worker',
+    name: 'Beanie Crocheter',
+    description: 'Automatically crafts beanies',
+    coinsPerSecond: 2,
+    baseCost: 500,
+  ),
+  Worker(
+    id: 'scarf_worker',
+    name: 'Scarf Crocheter',
+    description: 'Automatically crafts scarves',
+    coinsPerSecond: 5,
+    baseCost: 1500,
+  ),
+  Worker(
+    id: 'socks_worker',
+    name: 'Socks Crocheter',
+    description: 'Automatically crafts socks',
+    coinsPerSecond: 10,
+    baseCost: 4000,
+  ),
+  Worker(
+    id: 'amigurumi_artist',
+    name: 'Amigurumi Artist',
+    description: 'Makes cute plushies',
+    coinsPerSecond: 25,
+    baseCost: 12000,
+  ),
+  Worker(
+    id: 'workshop_manager',
+    name: 'Workshop Manager',
+    description: 'Manages the whole workshop',
+    coinsPerSecond: 75,
+    baseCost: 40000,
+  ),
 ];
 
 class CraftingSlot {
@@ -36,11 +94,13 @@ class CraftingSlot {
 }
 
 class GameState extends ChangeNotifier {
+  
   double coins = 0;
   double coinsPerSecond = 0;
   List<String> inventory = [];
   CraftingSlot? craftingSlot;
   Timer? _timer;
+  Map<String, int> workerCounts = {};
 
   GameState() {
     _load();
@@ -86,17 +146,52 @@ class GameState extends ChangeNotifier {
     _save();
   }
 
+bool buyWorker(Worker worker) {
+  final count = workerCounts[worker.id] ?? 0;
+  final cost = worker.costForCount(count);
+  if (coins >= cost) {
+    coins -= cost;
+    workerCounts[worker.id] = count + 1;
+    _updateCoinsPerSecond();
+    notifyListeners();
+    _save();
+    return true;
+  }
+  return false;
+}
+
+void _updateCoinsPerSecond() {
+  coinsPerSecond = 0;
+  for (final worker in workers) {
+    final count = workerCounts[worker.id] ?? 0;
+    coinsPerSecond += worker.coinsPerSecond * count;
+  }
+}
+
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('coins', coins);
     await prefs.setStringList('inventory', inventory);
     await prefs.setInt('closeTime', DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString('workers', workerCounts.entries
+    .map((e) => '${e.key}:${e.value}')
+    .join(','));
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     coins = prefs.getDouble('coins') ?? 0;
     inventory = prefs.getStringList('inventory') ?? [];
+    final workersStr = prefs.getString('workers') ?? '';
+if (workersStr.isNotEmpty) {
+  for (final entry in workersStr.split(',')) {
+    final parts = entry.split(':');
+    if (parts.length == 2) {
+      workerCounts[parts[0]] = int.tryParse(parts[1]) ?? 0;
+    }
+  }
+}
+_updateCoinsPerSecond();
 
     // Offline earnings
     final closeTime = prefs.getInt('closeTime');
