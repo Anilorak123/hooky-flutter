@@ -135,6 +135,33 @@ const List<Yarn> yarns = [
   ),
 ];
 
+class Level {
+  final int level;
+  final int xpRequired;
+  final int coinReward;
+  final String title;
+
+  const Level({
+    required this.level,
+    required this.xpRequired,
+    required this.coinReward,
+    required this.title,
+  });
+}
+
+const List<Level> levels = [
+  Level(level: 1, xpRequired: 0, coinReward: 0, title: 'Beginner Crocheter'),
+  Level(level: 2, xpRequired: 100, coinReward: 50, title: 'Yarn Enthusiast'),
+  Level(level: 3, xpRequired: 300, coinReward: 150, title: 'Hook Master'),
+  Level(level: 4, xpRequired: 600, coinReward: 400, title: 'Craft Artist'),
+  Level(level: 5, xpRequired: 1000, coinReward: 800, title: 'Wool Wizard'),
+  Level(level: 6, xpRequired: 2000, coinReward: 2000, title: 'Amigurumi Expert'),
+  Level(level: 7, xpRequired: 4000, coinReward: 5000, title: 'Crochet Entrepreneur'),
+  Level(level: 8, xpRequired: 8000, coinReward: 12000, title: 'Yarn Tycoon'),
+  Level(level: 9, xpRequired: 15000, coinReward: 30000, title: 'Crochet Legend'),
+  Level(level: 10, xpRequired: 30000, coinReward: 100000, title: 'Grand Master'),
+];
+
 class CraftingSlot {
   final Item item;
   final DateTime startTime;
@@ -164,6 +191,9 @@ class GameState extends ChangeNotifier {
   Map<String, int> workerCounts = {};
   String currentYarnId = 'acrylic';
   Set<String> unlockedYarns = {'acrylic'};
+  int xp = 0;
+  int level = 1;
+  String? levelUpMessage;
 
   GameState() {
     _load();
@@ -198,16 +228,18 @@ class GameState extends ChangeNotifier {
   }
 
   void sellAll() {
-  int total = 0;
-  for (final itemName in inventory) {
-    final item = items.firstWhere((i) => i.name == itemName);
-    total += (item.basePrice * getYarnMultiplier()).toInt();
+    int total = 0;
+    for (final itemName in inventory) {
+      final item = items.firstWhere((i) => i.name == itemName);
+      final price = (item.basePrice * getYarnMultiplier()).toInt();
+      total += price;
+      addXp(item.basePrice ~/ 10);
+    }
+    coins += total;
+    inventory.clear();
+    notifyListeners();
+    _save();
   }
-  coins += total;
-  inventory.clear();
-  notifyListeners();
-  _save();
-}
 
 bool buyWorker(Worker worker) {
   final count = workerCounts[worker.id] ?? 0;
@@ -256,6 +288,46 @@ void _updateCoinsPerSecond() {
   }
 }
 
+void addXp(int amount) {
+  xp += amount;
+  _checkLevelUp();
+  notifyListeners();
+}
+
+void _checkLevelUp() {
+  for (final levelData in levels) {
+    if (levelData.level == level + 1 && xp >= levelData.xpRequired) {
+      level++;
+      coins += levelData.coinReward;
+      levelUpMessage =
+          'Level ${levelData.level}!\n${levelData.title}\n+${levelData.coinReward} coins!';
+      _save();
+      break;
+    }
+  }
+}
+
+Level getCurrentLevel() => levels.firstWhere((l) => l.level == level);
+
+Level? getNextLevel() {
+  try {
+    return levels.firstWhere((l) => l.level == level + 1);
+  } catch (_) {
+    return null;
+  }
+}
+
+double getXpProgress() {
+  final current = getCurrentLevel();
+  final next = getNextLevel();
+  if (next == null) return 1.0;
+  final currentXp = xp - current.xpRequired;
+  final needed = next.xpRequired - current.xpRequired;
+  return (currentXp / needed).clamp(0.0, 1.0);
+}
+
+
+
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('coins', coins);
@@ -263,6 +335,8 @@ void _updateCoinsPerSecond() {
     await prefs.setInt('closeTime', DateTime.now().millisecondsSinceEpoch);
     await prefs.setString('currentYarn', currentYarnId);
     await prefs.setStringList('unlockedYarns', unlockedYarns.toList());
+    await prefs.setInt('xp', xp);
+    await prefs.setInt('level', level);
     await prefs.setString('workers', workerCounts.entries
     .map((e) => '${e.key}:${e.value}')
     .join(','));
@@ -274,6 +348,8 @@ void _updateCoinsPerSecond() {
     inventory = prefs.getStringList('inventory') ?? [];
     currentYarnId = prefs.getString('currentYarn') ?? 'acrylic';
     unlockedYarns = (prefs.getStringList('unlockedYarns') ?? ['acrylic']).toSet();
+    xp = prefs.getInt('xp') ?? 0;
+    level = prefs.getInt('level') ?? 1;
     final workersStr = prefs.getString('workers') ?? '';
 if (workersStr.isNotEmpty) {
   for (final entry in workersStr.split(',')) {
