@@ -448,7 +448,7 @@ class WorkersScreen extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 itemCount: workers.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final worker = workers[index];
                   final count = game.workerCounts[worker.id] ?? 0;
@@ -581,24 +581,177 @@ class YarnScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SafeArea(
+    final game = context.watch<GameState>();
+    final currentYarn = game.getCurrentYarn();
+
+    return SafeArea(
       child: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Yarn Shop',
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD782BA),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Yarn Shop',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${game.coins.toInt()} coins',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: currentYarn.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Using: ${currentYarn.name} (x${currentYarn.priceMultiplier} price)',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Choose your yarn',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFFD782BA),
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              'Buy better yarn for higher prices!',
-              style: TextStyle(color: Colors.grey),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ListView.separated(
+                itemCount: yarns.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final yarn = yarns[index];
+                  final isUnlocked = game.unlockedYarns.contains(yarn.id);
+                  final isCurrent = game.currentYarnId == yarn.id;
+                  final canAfford = game.coins >= yarn.cost;
+
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isCurrent ? const Color(0xFFEFC7E5) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: isCurrent
+                          ? Border.all(color: const Color(0xFFD782BA), width: 2)
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.pink.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Color dot
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: yarn.color,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                yarn.name + (isCurrent ? ' ✓' : ''),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isCurrent
+                                      ? const Color(0xFFD782BA)
+                                      : const Color(0xFF444444),
+                                ),
+                              ),
+                              Text(
+                                yarn.description,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                'x${yarn.priceMultiplier} price multiplier',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFD782BA),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: (isUnlocked || canAfford)
+                              ? () => game.buyYarn(yarn)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isCurrent
+                                ? const Color(0xFF6E9887)
+                                : const Color(0xFFD782BA),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.grey[300],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                          ),
+                          child: Text(
+                            isCurrent
+                                ? 'Active'
+                                : isUnlocked
+                                    ? 'Select'
+                                    : '${yarn.cost}\ncoins',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
