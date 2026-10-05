@@ -187,7 +187,6 @@ class ShopScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final game = context.watch<GameState>();
-    print('Level: ${game.level}, XP: ${game.xp}');
 
     return SafeArea(
       child: Padding(
@@ -371,13 +370,50 @@ class ShopScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Items grid
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                children: items.map((item) => _ItemCard(item: item)).toList(),
+              child: ListView(
+                children: [
+                  ...['Accessories', 'Home Decor', 'Amigurumi', 'Clothing'].map((category) {
+                    final categoryItems = items
+                        .where((i) => i.category == category)
+                        .toList();
+                    final unlockedItems = categoryItems
+                        .where((i) => i.unlockLevel <= game.level)
+                        .toList();
+                    final lockedItems = categoryItems
+                        .where((i) => i.unlockLevel > game.level)
+                        .toList();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            category,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFD782BA),
+                            ),
+                          ),
+                        ),
+                        GridView.count(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            ...unlockedItems.map((item) => _ItemCard(item: item)),
+                            ...lockedItems.map((item) => _LockedItemCard(item: item)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    );
+                  }),
+                ],
               ),
             ),
           ],
@@ -446,6 +482,58 @@ class _ItemCard extends StatelessWidget {
                 isCrafting ? 'Busy' : 'Craft',
                 style: const TextStyle(fontSize: 13),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedItemCard extends StatelessWidget {
+  final Item item;
+
+  const _LockedItemCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock, color: Colors.grey[400], size: 32),
+          const Spacer(),
+          Text(
+            item.name,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Unlock at level ${item.unlockLevel}',
+            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Locked',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey[400]),
             ),
           ),
         ],

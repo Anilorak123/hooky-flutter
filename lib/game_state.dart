@@ -6,16 +6,39 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class Item {
   final String name;
-  final int baseTime; // seconds
+  final int baseTime;
   final int basePrice;
+  final int unlockLevel;
+  final String category;
 
-  const Item({required this.name, required this.baseTime, required this.basePrice});
+  const Item({
+    required this.name,
+    required this.baseTime,
+    required this.basePrice,
+    this.unlockLevel = 1,
+    required this.category,
+  });
 }
 
 const List<Item> items = [
-  Item(name: 'Beanie', baseTime: 10, basePrice: 30),
-  Item(name: 'Scarf', baseTime: 20, basePrice: 50),
-  Item(name: 'Socks', baseTime: 15, basePrice: 40),
+  // Accessories - available from start
+  Item(name: 'Beanie', baseTime: 10, basePrice: 30, unlockLevel: 1, category: 'Accessories'),
+  Item(name: 'Scrunchie', baseTime: 8, basePrice: 20, unlockLevel: 1, category: 'Accessories'),
+  Item(name: 'Scarf', baseTime: 20, basePrice: 50, unlockLevel: 1, category: 'Accessories'),
+  Item(name: 'Socks', baseTime: 15, basePrice: 40, unlockLevel: 2, category: 'Accessories'),
+  Item(name: 'Fingerless Gloves', baseTime: 25, basePrice: 65, unlockLevel: 2, category: 'Accessories'),
+  // Home decor - unlock level 3
+  Item(name: 'Pot Holder', baseTime: 30, basePrice: 80, unlockLevel: 3, category: 'Home Decor'),
+  Item(name: 'Coaster Set', baseTime: 35, basePrice: 90, unlockLevel: 3, category: 'Home Decor'),
+  Item(name: 'Pillow Cover', baseTime: 60, basePrice: 150, unlockLevel: 4, category: 'Home Decor'),
+  // Amigurumi - unlock level 5
+  Item(name: 'Cactus Plushie', baseTime: 80, basePrice: 180, unlockLevel: 5, category: 'Amigurumi'),
+  Item(name: 'Bunny Plushie', baseTime: 90, basePrice: 200, unlockLevel: 5, category: 'Amigurumi'),
+  Item(name: 'Bear Plushie', baseTime: 120, basePrice: 250, unlockLevel: 6, category: 'Amigurumi'),
+  // Clothing - unlock level 7
+  Item(name: 'Baby Booties', baseTime: 45, basePrice: 120, unlockLevel: 7, category: 'Clothing'),
+  Item(name: 'Crop Top', baseTime: 180, basePrice: 400, unlockLevel: 8, category: 'Clothing'),
+  Item(name: 'Cardigan', baseTime: 300, basePrice: 700, unlockLevel: 9, category: 'Clothing'),
 ];
 
 class Worker {
